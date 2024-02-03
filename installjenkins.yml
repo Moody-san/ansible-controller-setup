@@ -1,0 +1,65 @@
+- name: Install and configure Jenkins with Docker
+  hosts: jenkins
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    - name: Install OpenJDK 11
+      apt:
+        name: openjdk-11-jre
+        state: present
+
+    - name: Add Jenkins GPG key
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list.d/jenkins.list
+        line: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian binary/"
+        create: yes
+
+    - name: Update apt cache after adding Jenkins repo
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Download Docker installation script
+      ansible.builtin.get_url:
+        url: https://get.docker.com
+        dest: /tmp/get-docker.sh
+        mode: '0755'
+
+    - name: Install Docker using the script
+      ansible.builtin.shell:
+        cmd: sh /tmp/get-docker.sh
+
+    - name: Add Jenkins and Ubuntu user to Docker group
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      loop:
+        - jenkins
+        - ubuntu
+
+    - name: Install qemu-user-static
+      apt:
+        name: qemu-user-static
+        state: present
+
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted

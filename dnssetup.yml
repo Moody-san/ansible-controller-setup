@@ -1,0 +1,36 @@
+- name: Update /etc/hosts file on all servers for DNS
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars_prompt:
+    - name: "oracleprivatelbip"
+      prompt: "Enter Oracle Load Balancer Private IP"
+    - name: "azureprivatelbip"
+      prompt: "Enter Azure Load Balancer Private IP"
+
+  tasks:
+    # - name: Add or update /etc/hosts entries for inventory hosts
+    #   lineinfile:
+    #     path: /etc/hosts
+    #     regexp: '^{{ hostvars[host].ansible_default_ipv4.address }}\\s+{{ host }}$'
+    #     line: "{{ hostvars[host].ansible_default_ipv4.address }} {{ host }}"
+    #     state: present
+    #   loop: "{{ groups['all'] }}"
+    #   loop_control:
+    #     loop_var: host
+    #   when: hostvars[host].ansible_default_ipv4.address is defined
+    #   check_mode: no
+
+    - name: Add Oracle Load Balancer IP
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^{{ oracleprivatelbip }}\\s+oracle_lb$'
+        line: "{{ oracleprivatelbip }} oracle_lb"
+        state: present
+
+    - name: Add Azure Load Balancer IP
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^{{ azureprivatelbip }}\\s+azure_lb$'
+        line: "{{ azureprivatelbip }} azure_lb"
+        state: present

@@ -1,0 +1,107 @@
+- name: Setup Argo CD with k3s
+  hosts: argocd
+  become: yes
+  vars:
+    user_home: "/home/ubuntu"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    - name: Install k3s
+      ansible.builtin.shell:
+        cmd: "curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='server' sh -s - --disable traefik"
+        warn: no
+
+    - name: Create .kube directory
+      file:
+        path: "{{ user_home }}/.kube"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copy k3s.yaml to user's kube config
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ user_home }}/.kube/config"
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: '0400'
+
+    - name: Set KUBECONFIG environment variable
+      ansible.builtin.lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        line: 'export KUBECONFIG={{ user_home }}/.kube/config'
+        create: yes
+
+    - name: Create namespace for Argo CD
+      command:
+        cmd: kubectl create namespace argocd
+        warn: no
+
+    - name: Deploy Argo CD
+      ansible.builtin.uri:
+        url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+        method: GET
+        return_content: yes
+      register: argocd_manifest
+
+    - name: Apply Argo CD manifest
+      ansible.builtin.copy:
+        content: "{{ argocd_manifest.content }}"
+        dest: "/tmp/argocd_install.yaml"
+
+    - name: Apply Argo CD manifest with kubectl
+      ansible.builtin.command:
+        cmd: kubectl apply -n argocd -f /tmp/argocd_install.yaml
+        warn: no
+
+    - name: Patch Argo CD service to NodePort
+      ansible.builtin.shell:
+        cmd: kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort"}}'
+        warn: no
+
+    - name: Set architecture variable
+      set_fact:
+        arch: "{{ ansible_architecture }}"
+      when: ansible_architecture in ['x86_64', 'aarch64']
+
+    - name: Convert architecture for Argo CD compatibility
+      set_fact:
+        arch: "amd64"
+      when: arch == "x86_64"
+
+    - name: Convert architecture for Argo CD compatibility
+      set_fact:
+        arch: "arm64"
+      when: arch == "aarch64"
+
+    - name: Fail for unsupported architectures
+      ansible.builtin.fail:
+        msg: "Unsupported architecture: {{ ansible_architecture }}"
+      when: ansible_architecture not in ['x86_64', 'aarch64']
+
+    - name: Get the latest Argo CD version
+      ansible.builtin.shell:
+        cmd: "curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep -o '\"tag_name\": \".*\"' | sed 's/\"tag_name\": \"//;s/\"//' "
+      register: argocd_version
+      changed_when: false
+
+    - name: Download Argo CD CLI
+      ansible.builtin.get_url:
+        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-{{ arch }}"
+        dest: "/tmp/argocd-linux-{{ arch }}"
+        mode: '0555'
+
+    - name: Install Argo CD CLI
+      ansible.builtin.shell:
+        cmd: "sudo install -m 555 /tmp/argocd-linux-{{ arch }} /usr/local/bin/argocd"
+      when: argocd_version.stdout is defined
+
+    - name: Clean up downloaded file
+      ansible.builtin.file:
+        path: "/tmp/argocd-linux-{{ arch }}"
+        state: absent

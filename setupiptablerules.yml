@@ -1,0 +1,59 @@
+- name: Clear iptables rules
+  hosts: [bastion,allservers]
+  gather_facts: no
+  become: yes
+  become_user: root
+  tasks:
+    - name: Stop unattended-upgrades service
+      service:
+        name: unattended-upgrades
+        state: stopped
+        
+    - name: Disable unattended-upgrades service on boot
+      systemd:
+        name: unattended-upgrades
+        enabled: no
+    
+    - name: Stop ufw
+      service:
+        name: ufw
+        state: stopped
+      ignore_errors: yes
+        
+    - name: Disable ufw
+      systemd:
+        name: ufw
+        enabled: no
+      ignore_errors: yes
+      
+    - name: Wait for cloud-init / user-data to finish
+      command: cloud-init status --wait
+      changed_when: false
+          
+    - name: Update apt cache
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+      
+    - name: Install iptables-persistent
+      package:
+        name: iptables-persistent
+        state: present
+      
+    - name: Flush iptables rules
+      shell: iptables -F
+
+    - name: Allow FORWARD traffic
+      shell: iptables -A FORWARD -j ACCEPT
+
+    - name: Allow INPUT traffic
+      shell: iptables -A INPUT -j ACCEPT
+
+    - name: Allow OUTPUT traffic
+      shell: iptables -A OUTPUT -j ACCEPT
+
+    - name: Save IPv4 iptables rules
+      shell: iptables-save > /etc/iptables/rules.v4
+
+    - name: Save IPv6 iptables rules
+      shell: ip6tables-save > /etc/iptables/rules.v6
