@@ -1,0 +1,31 @@
+---
+- name: Configure ArgoCD Cluster
+  hosts: [oraclemaster, azuremaster]
+  tasks:
+    - name: Gather kubeconfig content
+      shell: cat ~/.kube/config
+      register: kubeconfig_content
+      when: inventory_hostname == control_node
+
+    - set_fact:
+        kubeconfig_content_fact: "{{ kubeconfig_content.stdout }}"
+      when: inventory_hostname == control_node
+
+
+- name: Transfer kubeconfig content to ArgoCD Node and Configure Cluster
+  hosts: argocd
+  tasks:
+    - name: Create config with kubeconfig content
+      copy:
+        content: "{{ hostvars[control_node].kubeconfig_content_fact }}"
+        dest: "~/.kube/{{clustername}}.yml"
+
+
+    - name: Set KUBECONFIG environment variable and add control node as a cluster to ArgoCD
+      shell: |
+        export KUBECONFIG=~/.kube/config
+        argocd login localhost:$(kubectl get service argocd-server -n argocd -o=jsonpath='{.spec.ports[?(@.port==80)].nodePort}') --username admin --password $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo) --insecure --plaintext
+        export KUBECONFIG=~/.kube/"{{clustername}}".yml
+        argocd cluster add kubernetes-admin@kubernetes --name "{{clustername}}"
+
+    

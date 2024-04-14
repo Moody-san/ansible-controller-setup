@@ -1,0 +1,60 @@
+---
+- name: Install and Configure Nginx
+  hosts: [argocd,jenkins]
+  become: true
+  vars:
+    ssl_certificate: "~/ssl/certificate.txt"
+    ssl_private_key: "~/ssl/private.txt"
+    nginx_config_file: "/etc/nginx/sites-enabled/default"
+    nginx_ssl_dir: "/etc/nginx/ssl"
+    nginx_ssl_permissions: "0644"
+
+  tasks:
+    - name: Retrieve Argocd port if 'argocd'
+      command: kubectl get service argocd-server -n argocd -o=jsonpath='{.spec.ports[?(@.port==80)].nodePort}'
+      register: query_result
+      when: inventory_hostname == 'argocd'
+
+    - name: Install Nginx
+      package:
+        name: nginx
+        state: present
+
+    - name: Create SSL directory
+      file:
+        path: "{{ nginx_ssl_dir }}"
+        state: directory
+        mode: "{{ nginx_ssl_permissions }}"
+
+    - name: Create Nginx configuration file
+      copy:
+        content: |
+          server {
+              listen              443 ssl default_server;
+              server_name         {{ inventory_hostname }}.itsadeal.me;
+              ssl_certificate     /etc/nginx/ssl/{{ inventory_hostname }}.itsadeal.me.crt;
+              ssl_certificate_key /etc/nginx/ssl/{{ inventory_hostname }}.itsadeal.me.key;
+              location / {
+                 proxy_pass http://localhost:{% if inventory_hostname == 'argocd' %}{{ query_result.stdout }}{% else %}8080{% endif %};
+                 proxy_set_header X-Forwarded-Proto https;
+                 proxy_set_header X-Forwarded-Port 443;
+                 proxy_set_header Host $host;
+                 proxy_set_header X-Real-IP $remote_addr;
+              }
+          }
+        dest: "{{ nginx_config_file }}"
+        mode: "0644"
+
+    - name: Copy SSL certificate and private key
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ nginx_ssl_dir }}/{{ inventory_hostname }}.itsadeal.me{{ item.dest_suffix }}"
+        mode: "{{ nginx_ssl_permissions }}"
+      with_items:
+        - { src: "{{ ssl_certificate }}", dest_suffix: ".crt" }
+        - { src: "{{ ssl_private_key }}", dest_suffix: ".key" }
+
+    - name: Reload Nginx service
+      service:
+        name: nginx
+        state: reloaded

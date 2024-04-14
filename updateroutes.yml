@@ -1,0 +1,73 @@
+- name: Apply Kubernetes resource files
+  hosts: [oraclemaster, azuremaster]
+  become: yes
+
+  tasks:
+    - name: Create directory for resource files
+      file:
+        path: /tmp/routes
+        state: directory
+      when: inventory_hostname == control_node
+
+    - name: Copy Gateway YAML content
+      copy:
+        content: |
+          apiVersion: networking.istio.io/v1beta1
+          kind: Gateway
+          metadata:
+            name: microservices-gateway
+          spec:
+            selector:
+              istio: ingressgateway
+            servers:
+            - port:
+                number: 80
+                name: http
+                protocol: HTTP
+              hosts:
+              - "*"
+        dest: /tmp/routes/gateway.yaml
+      when: inventory_hostname == control_node
+
+    - name: Copy VirtualService YAML content
+      copy:
+        content: |
+          apiVersion: networking.istio.io/v1beta1
+          kind: VirtualService
+          metadata:
+            name: microservices-virtual-service
+          spec:
+            hosts:
+            - "*"
+            gateways:
+            - microservices-gateway
+            http:
+            - match:
+              - uri:
+                  prefix: /order-service/
+              rewrite:
+                uri: /
+              route:
+              - destination:
+                  host: order-service.default.svc.cluster.local
+            - match:
+              - uri:
+                  prefix: /payment-service/
+              rewrite:
+                uri: /
+              route:
+              - destination:
+                  host: payment-service.default.svc.cluster.local
+            - match:
+              - uri:
+                  prefix: /
+              route:
+              - destination:
+                  host: app1service.default.svc.cluster.local
+        dest: /tmp/routes/virtual-service.yaml
+      when: inventory_hostname == control_node
+
+    - name: Apply changes to the resource
+      command: "kubectl apply -f /tmp/routes"
+      become_user: ubuntu
+      when: inventory_hostname == control_node
