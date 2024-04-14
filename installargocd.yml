@@ -64,6 +64,16 @@
         cmd: kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort"}}'
         warn: no
 
+    - name: Patch ConfigMap
+      ansible.builtin.shell:
+        cmd: kubectl patch configmap argocd-cmd-params-cm --type merge -n argocd -p '{"data":{"server.insecure":"true"}}'
+        warn: no
+
+    - name: Patch Secret
+      ansible.builtin.shell:
+        cmd: kubectl patch secret argocd-secret -n argocd --type merge -p '{"stringData":{"webhook.github.secret":"somesecret"}}'
+        warn: no
+
     - name: Set architecture variable
       set_fact:
         arch: "{{ ansible_architecture }}"
@@ -105,3 +115,8 @@
       ansible.builtin.file:
         path: "/tmp/argocd-linux-{{ arch }}"
         state: absent
+    
+    - name: Reload deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout restart deployment argocd-server -n argocd
+        warn: no
