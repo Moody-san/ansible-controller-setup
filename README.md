@@ -1,20 +1,31 @@
 # Ansible Controller Setup
-
 This repository contains Ansible scripts for setting up CiCd and management of infra deployed through the following repos :
-- https://github.com/Moody-san/terraform-multicloud-infra
-- https://github.com/Moody-san/ansible-k8s-deployment
+- [terraform multi cloud](https://github.com/Moody-san/terraform-multicloud-infra)
+- [ansible kubernetes playbooks ](https://github.com/Moody-san/ansible-k8s-deployment)
 
 ## Prerequisites
+- Ansible Cli
 
-Before you begin, ensure you have the following:
-
-- Ansible
-  
 ## Installation
-
-Clone the repository to your Ansible Controller machine:
-
+Clone the repository to your machine:
 ```bash
 git clone https://github.com/Moody-san/ansible-controller-setup.git
 cd ansible-controller-setup
-ansible-playbook playbook -i inventoryfile
+```
+## Usage
+```bash
+ansible-playbook acceptfingerprint.yml -i inventory --forks 1  #use this to add server to knownhosts
+ansible-playbook setupiptablerules.yml -i inventory #ansible scripts sometimes get disconnected from oracle servers without this , though flushing rules like this not recommended 
+ansible-playbook installjenkins.yml -i inventory
+ansible-playbook installargocd.yml -i inventory
+ansible-playbook installcertificate.yml -i inventory #requires ssl folder to be present for more information refer to terraform repo 
+ansible-playbook registercluster.yml -i inventory -e "control_node=oraclemaster" -e "clustername=oraclecluster"
+ansible-playbook updateroutes.yml -i inventory -e "control_node=oraclemaster"  #istio mesh virtual service routes 
+ansible-playbook updatesecrets.yml -i inventory -e "control_node=oraclemaster" #k8s secrets
+ansible-playbook enablemonitoring.yml -i inventory -e "control_node=oraclemaster" 
+```
+## Configuration
+update secrets and routes in copy yaml task and then apply to update existing values.
+
+## Additional Resources
+- **MariaDB Cluster Setup**: For setting up a MariaDB cluster with Kubernetes-based failover, visit [ansible-galeracluster-deployment](https://github.com/Moody-san/ansible-galeracluster-deployment)
