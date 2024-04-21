@@ -31,9 +31,9 @@
         content: |
           server {
               listen              443 ssl default_server;
-              server_name         {{ inventory_hostname }}.itsadeal.me;
-              ssl_certificate     /etc/nginx/ssl/{{ inventory_hostname }}.itsadeal.me.crt;
-              ssl_certificate_key /etc/nginx/ssl/{{ inventory_hostname }}.itsadeal.me.key;
+              server_name         {{ inventory_hostname }}.domain.me;
+              ssl_certificate     /etc/nginx/ssl/{{ inventory_hostname }}.domain.me.crt;
+              ssl_certificate_key /etc/nginx/ssl/{{ inventory_hostname }}.domain.me.key;
               location / {
                  proxy_pass http://localhost:{% if inventory_hostname == 'argocd' %}{{ query_result.stdout }}{% else %}8080{% endif %};
                  proxy_set_header X-Forwarded-Proto https;
@@ -48,7 +48,7 @@
     - name: Copy SSL certificate and private key
       copy:
         src: "{{ item.src }}"
-        dest: "{{ nginx_ssl_dir }}/{{ inventory_hostname }}.itsadeal.me{{ item.dest_suffix }}"
+        dest: "{{ nginx_ssl_dir }}/{{ inventory_hostname }}.domain.me{{ item.dest_suffix }}"
         mode: "{{ nginx_ssl_permissions }}"
       with_items:
         - { src: "{{ ssl_certificate }}", dest_suffix: ".crt" }
