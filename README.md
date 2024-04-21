@@ -4,7 +4,9 @@ This repository contains Ansible scripts for setting up CiCd and management of i
 - [ansible kubernetes playbooks ](https://github.com/Moody-san/ansible-k8s-deployment)
 
 ## Prerequisites
-- Ansible Cli
+
+- **Infra provisioned through IAC**: Deployed infrastructure using [terraform multi cloud iac](https://github.com/Moody-san/terraform-multicloud-infra) (as it contains a module to automatically update inventory for ansible scripts given that ansible repo and terraform repo are in the same directories). 
+- **Software Requirements**: Ensure Ansible cli is installed.
 
 ## Installation
 Clone the repository to your machine:
