@@ -1,0 +1,26 @@
+- name: Enable Monitoring
+  hosts: [oraclemaster, azuremaster]
+  become: yes
+
+  tasks:
+    
+    - name: Apply prometheus
+      command: "kubectl apply -f istio-1.19.1/samples/addons/prometheus.yaml"
+      become_user: ubuntu
+      when: inventory_hostname == control_node
+
+    - name: Apply grafana
+      command: "kubectl apply -f istio-1.19.1/samples/addons/grafana.yaml"
+      become_user: ubuntu
+      when: inventory_hostname == control_node
+
+    - name: Apply kiali
+      command: "kubectl apply -f istio-1.19.1/samples/addons/kiali.yaml"
+      become_user: ubuntu
+      when: inventory_hostname == control_node
+
+    - name: Apply jaeger
+      command: "kubectl apply -f istio-1.19.1/samples/addons/jaeger.yaml"
+      become_user: ubuntu
+      when: inventory_hostname == control_node
+
