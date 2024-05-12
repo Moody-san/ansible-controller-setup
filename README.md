@@ -31,3 +31,9 @@ update secrets and routes in copy yaml task and then apply to update existing va
 
 ## Additional Resources
 - **MariaDB Cluster Setup**: For setting up a MariaDB cluster with Kubernetes-based failover, visit [ansible-galeracluster-deployment](https://github.com/Moody-san/ansible-galeracluster-deployment)
+
+## Notes
+- To get argo cd initial password run this command :
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+```
