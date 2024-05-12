@@ -37,3 +37,8 @@ update secrets and routes in copy yaml task and then apply to update existing va
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
+## Demo
+
+
+https://github.com/Moody-san/ansible-controller-setup/assets/87976665/643f6024-7fd7-4a92-a862-ddcc94989485
+
