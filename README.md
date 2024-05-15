@@ -39,6 +39,5 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 ```
 ## Demo
 
-
-https://github.com/Moody-san/ansible-controller-setup/assets/87976665/643f6024-7fd7-4a92-a862-ddcc94989485
+https://www.youtube.com/watch?v=168pmXIvk6U
 
